@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <title>The World Tides</title>
+    <meta charset="UTF-8">
+    <link rel="shortcut icon" href="./files/favicon.ico">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="An interactive 3D Earth with animated tides and zoom-dependent satellite imagery.">
+    <style>
+:root {
+  color-scheme: dark;
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  background: #05080c;
+  color: #f2f5f7;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#scene-container {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+}
+
+body {
+  min-height: 100dvh;
+  overscroll-behavior: none;
+}
+
+canvas {
+  display: block;
+  touch-action: none;
+}
+
+.globe-video {
+  display: none;
+}
+
+a {
+  color: #9ac7e8;
+  text-underline-offset: 3px;
+  pointer-events: auto;
+}
+
+a:hover {
+  color: #d7ecfa;
+}
+
+a:focus-visible {
+  outline: 2px solid #d7ecfa;
+  outline-offset: 3px;
+}
+
+#info {
+  position: fixed;
+  inset: 0 0 auto;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: calc(16px + env(safe-area-inset-top)) 16px 16px;
+  text-align: center;
+  pointer-events: none;
+  user-select: none;
+  text-shadow: 0 1px 8px #000;
+}
+
+#info strong {
+  font-size: 15px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+#info span,
+#info small {
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+#info span {
+  color: #d4dce2;
+}
+
+#tile-status {
+  position: fixed;
+  left: max(12px, env(safe-area-inset-left));
+  bottom: max(12px, env(safe-area-inset-bottom));
+  z-index: 2;
+  max-width: calc(100vw - 24px);
+  padding: 7px 10px;
+  border: 1px solid rgb(255 255 255 / 14%);
+  border-radius: 3px;
+  background: rgb(5 8 12 / 72%);
+  color: #d4dce2;
+  font-size: 11px;
+  line-height: 1.4;
+  pointer-events: none;
+  backdrop-filter: blur(6px);
+}
+
+#tile-status[data-state="loading"]::before {
+  content: "";
+  display: inline-block;
+  width: 5px;
+  height: 5px;
+  margin-right: 7px;
+  border-radius: 50%;
+  background: #9ac7e8;
+  vertical-align: 1px;
+  animation: pulse 1s ease-in-out infinite alternate;
+}
+
+#tile-status[data-state="error"] {
+  color: #ffd1c8;
+}
+
+.dg.ac {
+  z-index: 3 !important;
+  user-select: none;
+}
+
+#about-open {
+  position: fixed;
+  right: max(12px, env(safe-area-inset-right));
+  bottom: max(12px, env(safe-area-inset-bottom));
+  z-index: 2;
+  padding: 7px 10px;
+  border: 1px solid rgb(255 255 255 / 14%);
+  border-radius: 3px;
+  background: rgb(5 8 12 / 72%);
+  color: #d4dce2;
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+  backdrop-filter: blur(6px);
+}
+
+#about-open:hover,
+#about-open:focus-visible {
+  color: #f2f5f7;
+  border-color: #9ac7e8;
+  outline: none;
+}
+
+#about {
+  width: min(560px, calc(100vw - 32px));
+  max-height: calc(100dvh - 48px);
+  padding: 20px 22px;
+  border: 1px solid rgb(255 255 255 / 14%);
+  border-radius: 4px;
+  background: rgb(5 8 12 / 92%);
+  color: #d4dce2;
+  font-size: 12px;
+  line-height: 1.6;
+  overflow-y: auto;
+}
+
+#about::backdrop {
+  background: rgb(0 0 0 / 55%);
+}
+
+#about h2 {
+  margin: 0 0 10px;
+  color: #f2f5f7;
+  font-size: 14px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+#about h3 {
+  margin: 14px 0 4px;
+  color: #f2f5f7;
+  font-size: 12px;
+}
+
+#about p,
+#about ul {
+  margin: 0 0 6px;
+}
+
+#about ul {
+  padding-left: 18px;
+}
+
+#about ul ul {
+  margin: 2px 0 0;
+}
+
+#about .about-disclaimer {
+  margin-bottom: 12px;
+  padding: 6px 10px;
+  border-left: 2px solid #e8c79a;
+  background: rgb(232 199 154 / 8%);
+  color: #f2e3cc;
+}
+
+#about-close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 28px;
+  height: 28px;
+  border: 0;
+  background: none;
+  color: #d4dce2;
+  font-size: 18px;
+  cursor: pointer;
+}
+
+#about-close:focus-visible {
+  outline: 2px solid #d7ecfa;
+}
+
+@keyframes pulse {
+  to { opacity: 0.25; }
+}
+
+@media (max-width: 600px) {
+  #info {
+    align-items: flex-start;
+    max-width: calc(100% - 160px);
+    text-align: left;
+  }
+
+  #info small {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #tile-status[data-state="loading"]::before {
+    animation: none;
+  }
+}
+
+    </style>
+  </head>
+  <body>
+    <!-- both layers are preloaded; earth.js plays only the selected one -->
+    <video id="video-temperature" class="globe-video" muted loop preload="auto" crossorigin="anonymous" playsinline>
+      <source src="textures/planets/temperatures_r1205.webm" type="video/webm; codecs=vp9">
+    </video>
+    <video id="video-elevation" class="globe-video" muted loop preload="auto" crossorigin="anonymous" playsinline>
+      <source src="textures/planets/elevations_r1205.webm" type="video/webm; codecs=vp9">
+    </video>
+
+    <main id="scene-container" aria-label="Interactive three-dimensional Earth"></main>
+
+    <header id="info">
+      SeaReport
+      <span>Running on <a href="https://eurohpcsupport.eu/supported-project/seareport/" target="_blank" rel="noopener">EuroHPC</a> Regular and Extreme Scale</span>
+    </header>
+
+    <output id="tile-status" aria-live="polite">Preparing satellite tiles…</output>
+
+    <button id="about-open" type="button" aria-haspopup="dialog" aria-controls="about">About the model</button>
+
+    <dialog id="about" aria-labelledby="about-title">
+      <button id="about-close" type="button" aria-label="Close">×</button>
+      <h2 id="about-title">SeaReport global model</h2>
+      <p>SeaReport is a global 3D baroclinic ocean model developed by the JRC E.1 Floods team (Disaster Risk Management Unit) to strengthen JRC expertise on coastal risks.</p>
+      <ul>
+        <li>Solver: <a href="https://schism-dev.github.io/schism/master/index.html" target="_blank" rel="noopener">SCHISM</a>, developed by Y. J. Zhang at <a href="https://www.vims.edu/ccrm/" target="_blank" rel="noopener">VIMS</a>.</li>
+        <li>Mesh: global unstructured grid down to the coastline, about 11 million nodes, 33 vertical levels.</li>
+        <li>Forcing: ECMWF IFS HRES operational forecasts from the MARS archive (~9 km), hourly:
+          <ul>
+            <li>10 m wind components (m/s)</li>
+            <li>mean sea-level pressure (Pa)</li>
+            <li>2 m air temperature and specific humidity</li>
+            <li>downward short- and long-wave radiation (W/m²)</li>
+            <li>total precipitation (kg/m²/s)</li>
+          </ul>
+        </li>
+        <li>Animations: latest mesh run (version <code>r12</code>), 10 days of water levels and 1 month of temperatures.</li>
+      </ul>
+      <h3>EuroHPC</h3>
+      <p>The model runs on <a href="https://eurohpcsupport.eu/supported-project/seareport/" target="_blank" rel="noopener">EuroHPC</a> supercomputers: MeluXina (LuxProvide, Regular Access) and MareNostrum (BSC, Extreme Scale Access).</p>
+      <h3>Acknowledgements</h3>
+      <ul>
+        <li><a href="https://github.com/oceanmodeling" target="_blank" rel="noopener">oceanmodeling GitHub community</a></li>
+        <li><a href="https://schism-dev.github.io/schism/master/index.html" target="_blank" rel="noopener">SCHISM</a> community</li>
+        <li><a href="https://opentelemac.org/en" target="_blank" rel="noopener">TELEMAC</a> community</li>
+        <li><a href="https://www.luxprovide.lu/" target="_blank" rel="noopener">LuxProvide</a> and <a href="https://bsc.es" target="_blank" rel="noopener">BSC</a> for MeluXina and MareNostrum EuroHPC facilities</li>
+        <li><a href="https://epicure-hpc.eu/2026/02/28/advancing-global-coastal-risk-modelling-through-reproducible-hpc-workflows-with-epicure/" target="_blank" rel="noopener">EPICURE</a> support team</li>
+      </ul>
+      <h3>Articles and publications</h3>
+      <ul>
+        <li><a href="https://eurohpcsupport.eu/supported-project/seareport/" target="_blank" rel="noopener">EuroHPC</a> project page</li>
+        <li><a href="https://epicure-hpc.eu/2026/02/28/advancing-global-coastal-risk-modelling-through-reproducible-hpc-workflows-with-epicure/" target="_blank" rel="noopener">EPICURE</a> blog post</li>
+        <li><a href="https://hdl.handle.net/20.500.11970/114351" target="_blank" rel="noopener">TELEMAC User Conference 2024</a></li>
+        <li><a href="https://www.waveworkshop.org/conferences/2025/Presentations/CC1_ThomasSailor_1330_JRC_seareport-STOFS2D-intercomparison_wave_workshop_thomas_saillour_v7.pdf" target="_blank" rel="noopener">Waveworkshop 2025</a></li>
+        <li><a href="https://doi.org/10.5194/egusphere-egu26-7777" target="_blank" rel="noopener">EGU 2026</a></li>
+      </ul>
+      <p class="about-disclaimer">Disclaimer: SeaReport is under active development. The data shown are a purely qualitative demonstration.</p>
+    </dialog>
+
+    <script>
+      const about = document.getElementById('about');
+      document.getElementById('about-open').addEventListener('click', () => about.showModal());
+      document.getElementById('about-close').addEventListener('click', () => about.close());
+      // close on backdrop click
+      about.addEventListener('click', event => { if (event.target === about) about.close(); });
+    </script>
+
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
